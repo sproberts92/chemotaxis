@@ -1,0 +1,40 @@
+USER_SOURCES = source.c
+EXECUTABLE = program.exe
+###################################
+SOURCE_DIR = src
+OBJECT_DIR = build
+BINARY_DIR = bin
+EXTERN_DIR = ext
+###################################
+CC = cl
+LINK = link
+CFLAGS = /Ox /c /Fo.\$(OBJECT_DIR)\ 
+
+LIBS = 
+DLLS_SRC = 
+
+SOURCES = $(SOURCE_DIR)\$(USER_SOURCES: = src\)
+_OBJECTS = $(OBJECT_DIR)\$(USER_SOURCES: = build\)
+OBJECTS = $(_OBJECTS:.c=.obj)
+
+BINARY = $(BINARY_DIR)\$(EXECUTABLE)
+
+all: $(BINARY) $(BINARY_DIR) $(OBJECTS)
+
+echo_objects:
+	echo $(OBJECTS)
+
+echo_sources:
+	echo $(SOURCES)
+
+$(BINARY): $(OBJECTS)
+	$(LINK) $(OBJECTS) $(LIBS) /OUT:$(BINARY)
+
+$(BINARY_DIR): $(DLLS_SRC)
+	for %n in ($**) do copy /y /v /b %n $@
+
+{$(SOURCE_DIR)\}.c{$(OBJECT_DIR)\}.obj::
+	$(CC) $(CFLAGS) $<
+
+clean:
+	del $(OBJECT_DIR)\*.obj $(BINARY_DIR)\*.dll $(BINARY_DIR)\*.exe

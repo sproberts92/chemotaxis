@@ -1,0 +1,35 @@
+USER_SOURCES = source.c
+EXECUTABLE = program.out
+###################################
+SOURCE_DIR = src
+OBJECT_DIR = build
+BINARY_DIR = bin
+EXTERN_DIR = ext
+###################################
+CC = gcc
+CFLAGS = -std=c99
+
+LIBS = 
+
+SOURCES = $(USER_SOURCES:%.c=$(SOURCE_DIR)/%.c)
+OBJECTS = $(USER_SOURCES:%.c=$(OBJECT_DIR)/%.o)
+
+BINARY = $(BINARY_DIR)/$(EXECUTABLE)
+
+all: $(BINARY) $(DLLS) $(OBJECTS)
+
+echo_objects:
+	@echo $(OBJECTS)
+
+echo_sources:
+	@echo $(SOURCES)
+
+$(BINARY): $(OBJECTS)
+	$(CC) $(OBJECTS) $(LIBS) -o $(BINARY)
+
+$(OBJECT_DIR)/%.o: $(SOURCE_DIR)/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	find ./$(BINARY_DIR)/ -name \*.out -type f -delete
+	find ./$(OBJECT_DIR)/ -name \*.o -type f -delete
