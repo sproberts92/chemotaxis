@@ -1,21 +1,27 @@
-USER_SOURCES = source.c
-EXECUTABLE = program.exe
+USER_SOURCES = chemotaxis.cpp
+EXECUTABLE = chemotaxis.exe
 ###################################
 SOURCE_DIR = src
 OBJECT_DIR = build
 BINARY_DIR = bin
 EXTERN_DIR = ext
 ###################################
-CC = cl
+CC = icl
 LINK = link
-CFLAGS = /Ox /c /Fo.\$(OBJECT_DIR)\ 
+CFLAGS = /EHsc /Wall /Wextra /Wpedantic /Qdiag-disable:remark /O3 /arch=SSSE3 /c /Fo.\$(OBJECT_DIR)\ \
+/D__builtin_huge_val()=HUGE_VAL \
+/D__builtin_huge_valf()=HUGE_VALF \
+/D__builtin_nan=nan \
+/D__builtin_nanf=nanf \
+/D__builtin_nans=nan \
+/D__builtin_nansf=nanf
 
 LIBS = 
 DLLS_SRC = 
 
 SOURCES = $(SOURCE_DIR)\$(USER_SOURCES: = src\)
 _OBJECTS = $(OBJECT_DIR)\$(USER_SOURCES: = build\)
-OBJECTS = $(_OBJECTS:.c=.obj)
+OBJECTS = $(_OBJECTS:.cpp=.obj)
 
 BINARY = $(BINARY_DIR)\$(EXECUTABLE)
 
@@ -33,7 +39,7 @@ $(BINARY): $(OBJECTS)
 $(BINARY_DIR): $(DLLS_SRC)
 	for %n in ($**) do copy /y /v /b %n $@
 
-{$(SOURCE_DIR)\}.c{$(OBJECT_DIR)\}.obj::
+{$(SOURCE_DIR)\}.cpp{$(OBJECT_DIR)\}.obj::
 	$(CC) $(CFLAGS) $<
 
 clean:
