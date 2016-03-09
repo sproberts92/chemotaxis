@@ -14,7 +14,9 @@ int ind(int x, int y, int d);
 void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
 void write_array(FILE *stream, unsigned int *arr, unsigned int dim);
 int modulo(int i, int n);
+void collide(unsigned int *lattice, unsigned int *lattice_t, config *cf);
 void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf);
+unsigned int rotate(unsigned int word, unsigned int length, unsigned int n);
 
 int main(void)
 {
@@ -29,6 +31,7 @@ int main(void)
 
 	for (int iter = 0; iter < 50; ++iter)
 	{
+		collide(lattice, lattice_t, &cf);
 		propagate(lattice, lattice_t, &cf);
 		
 		write_array(stdout, lattice, cf.dim);
@@ -40,7 +43,7 @@ int main(void)
 	return EXIT_SUCCESS;
 }
 
-void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf)
+void collide(unsigned int *lattice, unsigned int *lattice_t, config *cf)
 {
 	memset(lattice_t, 0, cf->arr_dim * sizeof(unsigned int));
 
@@ -48,7 +51,6 @@ void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf)
 	{
 		for (int j = 0; j < cf->dim; ++j)
 		{
-
 			unsigned int *neighbours = malloc(cf->n_neigh * sizeof(unsigned int));
 			get_neighbours(neighbours, i, j, cf->dim, cf->arr_dim);
 
@@ -57,23 +59,38 @@ void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf)
 				if((lattice[neighbours[n]] >> ((n + cf->n_neigh/2)%cf->n_neigh)) & 1)
 				{
 					lattice[neighbours[n]] &= ~(1 << (((n + cf->n_neigh/2)%cf->n_neigh)));
-					lattice_t[modulo(ind(i,j,cf->dim), cf->arr_dim)] |= 1 << ((n + cf->n_neigh/2)%cf->n_neigh);
+					lattice_t[modulo(ind(i,j,cf->dim), cf->arr_dim)] |= 1 << n;
 				}
-
 			}
 
 			free(neighbours);
 		}
 	}
+}
 
+void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf)
+{
 	for (int i = 0; i < cf->arr_dim; ++i)
-		lattice[i] = lattice_t[i];
+		lattice[i] = rotate(lattice_t[i], cf->n_neigh, cf->n_neigh/2);
 
 	for (int i = 0; i < 10000000; ++i)
 	{
 		double *d = malloc(1000 * sizeof(double));
 		free(d);
 	}
+}
+
+unsigned int rotate(unsigned int word, unsigned int length, unsigned int n)
+{
+	for(unsigned int i = 0; i < n; i++)
+	{
+		unsigned int bit = (word >> (length - 1)) & 1;
+		word &= ~(1 << (length - 1));
+		word <<= 1;
+		if(bit) word |= 1;
+		else word &= ~1;
+	}
+	return word;
 }
 
 void write_array(FILE *stream, unsigned int *arr, unsigned int dim)
