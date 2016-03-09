@@ -6,9 +6,18 @@ OBJECT_DIR = build
 BINARY_DIR = bin
 EXTERN_DIR = ext
 ###################################
-CC = icl
+CC = cl
 LINK = link
-CFLAGS = /EHsc /Wall /Wextra /Wpedantic /Qdiag-disable:remark /O3 /arch=SSSE3 /c /Fo.\$(OBJECT_DIR)\ 
+
+!IF "$(CC)" == "cl"
+EXTRA_FLAGS = /Ox
+!ENDIF
+
+!IF "$(CC)" == "icl"
+EXTRA_FLAGS = /Wextra /Wpedantic /Qdiag-disable:remark /O3 /arch=SSSE3
+!ENDIF
+
+CFLAGS = /EHsc /Wall $(EXTRA_FLAGS) /c /Fo.\$(OBJECT_DIR)\ 
 
 LIBS = 
 DLLS_SRC = 
