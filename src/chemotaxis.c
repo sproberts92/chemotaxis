@@ -1,54 +1,114 @@
+#pragma warning( disable : 4710 4711 )
+
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef struct{
+	const int dim;
+	const int arr_dim;
+	const int n_neigh;
+} config;
 
 
-int ind(int x, int y, int z, int xd, int yd, int zd);
-
-void get_neighbours(int *nb, int x, int y, int z, int d);
+int ind(int x, int y, int d);
+void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
+void write_array(FILE *stream, unsigned int *arr, unsigned int dim);
+int modulo(int i, int n);
+void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf);
 
 int main(void)
 {
-	/* Must be even */
-	const int n_neigh = 6;
-	if (n_neigh % 2 != 0)
-	{
-		printf("n_neigh must be even. Aborting.\n");
-		return EXIT_FAILURE;
-	}
-	
-	const int dim = 20;
-	const int arr_dim = pow(dim, n_neigh/2);
+	config cf = {10, 100, 6};
 
-	int lattice;
+	unsigned int *lattice   = calloc(cf.arr_dim, sizeof(unsigned int));
+	unsigned int *lattice_t = calloc(cf.arr_dim, sizeof(unsigned int));
 
-	for (int i = 0; i < dim; ++i)
+	lattice[44] = 63;
+
+	write_array(stdout, lattice, cf.dim);
+
+	for (int iter = 0; iter < 50; ++iter)
 	{
-		for (int j = 0; j < dim; ++j)
-		{
-			for (int k = 0; k < dim; ++k)
-			{
-				int neighbours[6];
-				get_neighbours(neighbours, i, j, k, dim);
-				free neighbours;
-			}
-		}
+		propagate(lattice, lattice_t, &cf);
+		
+		write_array(stdout, lattice, cf.dim);
 	}
+
+	free(lattice);
+	free(lattice_t);
 
 	return EXIT_SUCCESS;
 }
 
-int ind(int x, int y, int z, int d)
+void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf)
 {
-	return (x * d * d) + (y * d) + z;
+	memset(lattice_t, 0, cf->arr_dim * sizeof(unsigned int));
+
+	for (int i = 0; i < cf->dim; ++i)
+	{
+		for (int j = 0; j < cf->dim; ++j)
+		{
+
+			unsigned int *neighbours = malloc(cf->n_neigh * sizeof(unsigned int));
+			get_neighbours(neighbours, i, j, cf->dim, cf->arr_dim);
+
+			for (int n = 0; n < cf->n_neigh; ++n)
+			{
+				if((lattice[neighbours[n]] >> ((n + cf->n_neigh/2)%cf->n_neigh)) & 1)
+				{
+					lattice[neighbours[n]] &= ~(1 << (((n + cf->n_neigh/2)%cf->n_neigh)));
+					lattice_t[modulo(ind(i,j,cf->dim), cf->arr_dim)] |= 1 << ((n + cf->n_neigh/2)%cf->n_neigh);
+				}
+
+			}
+
+			free(neighbours);
+		}
+	}
+
+	for (int i = 0; i < cf->arr_dim; ++i)
+		lattice[i] = lattice_t[i];
+
+	for (int i = 0; i < 10000000; ++i)
+	{
+		double *d = malloc(1000 * sizeof(double));
+		free(d);
+	}
 }
 
-void get_neighbours(int *nb, int x, int y, int z, int d)
+void write_array(FILE *stream, unsigned int *arr, unsigned int dim)
 {
-	nb[0] = ind(x + 1, y, z, d);
-	nb[1] = ind(x, y + 1, z, d);
-	nb[2] = ind(x, y, z + 1, d);
-	nb[3] = ind(x - 1, y, z, d);
-	nb[4] = ind(x, y - 1, z, d);
-	nb[5] = ind(x, y, z - 1, d);
+	for (unsigned int i = 0; i < dim; ++i)
+	{
+		for (unsigned int j = 0; j < dim - i; ++j)
+			printf(" ");
+		for (unsigned int j = 0; j < dim; ++j)
+			fprintf(stream, "%d ", arr[i + dim * j]);
+
+		fprintf(stream, "\n");
+	}
+
+	fprintf(stream, "\n");
+}
+
+int ind(int x, int y, int d)
+{
+	return (x * d) + y;
+}
+
+void get_neighbours(unsigned int *nb, int x, int y, int d, int td)
+{
+	nb[0] = modulo(ind(x + 1, y,     d), td);
+	nb[1] = modulo(ind(x + 1, y + 1, d), td);
+	nb[2] = modulo(ind(x,     y + 1, d), td);
+	nb[3] = modulo(ind(x - 1, y,     d), td);
+	nb[4] = modulo(ind(x - 1, y - 1, d), td);
+	nb[5] = modulo(ind(x,     y - 1, d), td);
+}
+
+int modulo(int i, int n)
+{
+	if(i > -1) return i % n;
+	else return(i % n + n);     // Incorrect implementation but faster, works in this case as input values are constrained such that the second % will never be needed.
+//	else return(i % n + n) % n; // Proper implementation of mod function
 }
