@@ -17,6 +17,7 @@ int modulo(int i, int n);
 void collide(unsigned int *lattice, unsigned int *lattice_t, config *cf);
 void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf);
 unsigned int rotate(unsigned int word, unsigned int length, unsigned int n);
+int popcountQbits(unsigned int x, int start, int end);
 
 int main(void)
 {
@@ -135,4 +136,14 @@ int modulo(int i, int n)
 	if(i > -1) return i % n;
 	else return(i % n + n);     // Incorrect implementation but faster, works in this case as input values are constrained such that the second % will never be needed.
 //	else return(i % n + n) % n; // Proper implementation of mod function
+}
+
+int popcountQbits(unsigned int x, int start, int end)
+{
+	int count = 0;
+
+	for(int i = start; i < end+1; i++)
+		count += (x >> i) & 1;
+
+	return count;
 }
