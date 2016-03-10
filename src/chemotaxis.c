@@ -95,14 +95,21 @@ unsigned int rotate(unsigned int word, unsigned int length, unsigned int n)
 
 void write_array(FILE *stream, unsigned int *arr, unsigned int dim)
 {
+	system("cls");
 	for (unsigned int i = 0; i < dim; ++i)
 	{
-		for (unsigned int j = 0; j < dim - i; ++j)
+		for (unsigned int j = 0; j < 2*((i+1) % 2); ++j)
 			printf(" ");
 		for (unsigned int j = 0; j < dim; ++j)
-			fprintf(stream, "%d ", arr[i + dim * j]);
+		{
+			int index = i + dim * ((j + i/2) % dim);
+			if (arr[index] == 0)
+				fprintf(stream, "    ");
+			else
+				fprintf(stream, "%3d ", arr[index]);
+		}
 
-		fprintf(stream, "\n");
+		fprintf(stream, "\n\n");
 	}
 
 	fprintf(stream, "\n");
