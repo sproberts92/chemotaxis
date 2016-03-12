@@ -29,7 +29,7 @@ int main(void)
 {
 	initSeed();
 
-	config cf = {15, 225, 6};
+	config cf = {50, 2500, 6};
 
 	unsigned int *lattice   = calloc(cf.arr_dim, sizeof(unsigned int));
 	unsigned int *lattice_t = calloc(cf.arr_dim, sizeof(unsigned int));
@@ -85,26 +85,26 @@ void collide(unsigned int *lattice, unsigned int *lattice_t, double *lattice_th,
 			}
 
 			unsigned int index = modulo(ind(i,j,cf->dim), cf->arr_dim);
-			unsigned int elem = lattice_t[index];
-			unsigned int pcount = popcountQbits(elem, 0, cf->n_neigh);
+			unsigned int *elem = &lattice_t[index];
+			unsigned int pcount = popcountQbits(*elem, 0, cf->n_neigh);
 
-			if(pcount > 4)
+			if(pcount > 2)
 			{
 				int rn = (int)(getRandNum() * 6.0f);
-				lattice_t[index] = 1 << rn;
+				*elem = 1 << rn;
 			}
-			else if (pcount < 1 && lattice_th[index] > 0.5 && getRandNum() > 0.99f)
+			else if (pcount > 0 && pcount < 2 && lattice_th[index] > 0.5)// && getRandNum() > 0.7f)
 			{
 				for (int m = 0; m < 2; ++m)
 				{
 					int rn = (int)(getRandNum() * 6.0f);
-					lattice_t[index] |= 1 << rn;
+					*elem |= 1 << rn;
 				}
 				lattice_th[index] = 0.0;
 			}
 			else{
-				lattice_th[index] += 0.2;
-				lattice_t[index] =0;
+				lattice_th[index] += 0.1;
+				*elem =0;
 			}
 
 			free(neighbours);
@@ -117,11 +117,11 @@ void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf)
 	for (int i = 0; i < cf->arr_dim; ++i)
 		lattice[i] = rotate(lattice_t[i], cf->n_neigh, cf->n_neigh/2);
 
-	for (int i = 0; i < 3000000; ++i)
-	{
-		double *d = malloc(1000 * sizeof(double));
-		free(d);
-	}
+	// for (int i = 0; i < 3000000; ++i)
+	// {
+		// double *d = malloc(1000 * sizeof(double));
+		// free(d);
+	// }
 }
 
 unsigned int rotate(unsigned int word, unsigned int length, unsigned int n)
