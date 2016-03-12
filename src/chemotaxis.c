@@ -1,4 +1,4 @@
-#pragma warning( disable : 4710 4711 )
+#pragma warning( disable : 4710 4711 4820 4996 )
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +23,7 @@ unsigned int rotate(unsigned int word, unsigned int length, unsigned int n);
 int popcountQbits(unsigned int x, int start, int end);
 double getRandNum(void);
 void initSeed(void);
+void write_pcount(FILE *stream, unsigned int *arr, unsigned int dim);
 
 int main(void)
 {
@@ -39,14 +40,20 @@ int main(void)
 
 	lattice[42] = 63;
 
-	write_array(stdout, lattice, cf.dim);
+	// write_array(stdout, lattice, cf.dim);
 
 	for (int iter = 0; iter < 500; ++iter)
 	{
 		collide(lattice, lattice_t, lattice_th, &cf);
 		propagate(lattice, lattice_t, &cf);
+
+		char f_name[64];
+		sprintf(f_name, "output/pcount_%d.dat", iter);
+		FILE *fp = fopen(f_name, "w");
 		
-		write_array(stdout, lattice, cf.dim);
+		// write_array(stdout, lattice, cf.dim);
+		write_pcount(fp, lattice, cf.dim);
+		fclose(fp);
 	}
 
 	free(lattice);
@@ -150,6 +157,16 @@ void write_array(FILE *stream, unsigned int *arr, unsigned int dim)
 	}
 
 	fprintf(stream, "\n");
+}
+
+void write_pcount(FILE *stream, unsigned int *arr, unsigned int dim)
+{
+	for (unsigned int i = 0; i < dim; ++i)
+	{
+		for (unsigned int j = 0; j < dim; ++j)
+			fprintf(stream, "%d ", popcountQbits(arr[i * dim + j], 0, 6));
+		fprintf(stream, "\n");
+	}
 }
 
 int ind(int x, int y, int d)
