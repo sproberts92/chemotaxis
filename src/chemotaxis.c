@@ -10,17 +10,16 @@ typedef struct{
 	const int dim;
 	const int arr_dim;
 	const int n_neigh;
+	const int iter;
+	const int age;
 } config;
-
 
 int ind(int x, int y, int d);
 void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
 void write_array(FILE *stream, unsigned int *arr, unsigned int dim);
 int modulo(int i, int n);
-void collide(unsigned int *lattice, unsigned int *lattice_t, double *lattice_th, config *cf);
-void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf);
-unsigned int rotate(unsigned int word, unsigned int length, unsigned int n);
-int popcountQbits(unsigned int x, int start, int end);
+void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int iter, config *cf);
+void propagate_2(unsigned int *lattice, unsigned int *lattice_t, config *cf);
 double getRandNum(void);
 void initSeed(void);
 void write_pcount(FILE *stream, unsigned int *arr, unsigned int dim);
@@ -29,30 +28,33 @@ int main(void)
 {
 	initSeed();
 
-	config cf = {50, 2500, 6};
+	// config cf = {15, 225, 6, 5000, 20};
+	config cf = {50, 2500, 6, 5000, 50};
 
-	unsigned int *lattice   = calloc(cf.arr_dim, sizeof(unsigned int));
-	unsigned int *lattice_t = calloc(cf.arr_dim, sizeof(unsigned int));
-	double *lattice_th = calloc(cf.arr_dim, sizeof(double));
+	unsigned int *lattice    = calloc(cf.arr_dim, sizeof(unsigned int));
+	unsigned int *lattice_t  = calloc(cf.arr_dim, sizeof(unsigned int));
+	unsigned int *lattice_th = calloc(cf.arr_dim, sizeof(unsigned int));
 
-	for (int i = 0; i < cf.arr_dim; ++i)
-		lattice_th[i] = 1.0f;
+	lattice[1275] = 1;
 
-	lattice[42] = 63;
-
-	// write_array(stdout, lattice, cf.dim);
-
-	for (int iter = 0; iter < 500; ++iter)
+	for (int iter = 2; iter < cf.iter + 2; ++iter)
 	{
-		collide(lattice, lattice_t, lattice_th, &cf);
-		propagate(lattice, lattice_t, &cf);
+		// write_array(stdout, lattice_th, cf.dim);
+
+		// for (int i = 0; i < 100000; ++i)
+		// {
+		// 	double *d = malloc(1000 * sizeof(double));
+		// 	free(d);
+		// }
+
+		propagate_1(lattice, lattice_t, lattice_th, iter, &cf);
+		propagate_2(lattice, lattice_t, &cf);
 
 		char f_name[64];
-		sprintf(f_name, "output/pcount_%d.dat", iter);
+		sprintf(f_name, "output/pcount_%d.dat", iter-2);
 		FILE *fp = fopen(f_name, "w");
-		
-		// write_array(stdout, lattice, cf.dim);
-		write_pcount(fp, lattice, cf.dim);
+
+		write_pcount(fp, lattice_th, cf.dim);
 		fclose(fp);
 	}
 
@@ -62,79 +64,67 @@ int main(void)
 	return EXIT_SUCCESS;
 }
 
-void collide(unsigned int *lattice, unsigned int *lattice_t, double *lattice_th, config *cf)
+void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int iter, config *cf)
 {
 	memset(lattice_t, 0, cf->arr_dim * sizeof(unsigned int));
-
+ 	unsigned int ct = 0;
 	for (int i = 0; i < cf->dim; ++i)
 	{
 		for (int j = 0; j < cf->dim; ++j)
 		{
-			unsigned int *neighbours = malloc(cf->n_neigh * sizeof(unsigned int));
-			get_neighbours(neighbours, i, j, cf->dim, cf->arr_dim);
-
-			for (int n = 0; n < cf->n_neigh; ++n)
-			{
-				unsigned int elem = lattice[neighbours[n]];
-				unsigned int n_in = ((n + cf->n_neigh/2)%cf->n_neigh);
-				if((elem >> n_in) & 1)
-				{
-					elem &= ~(1 << n_in);
-					lattice_t[modulo(ind(i,j,cf->dim), cf->arr_dim)] |= 1 << n;
-				}
-			}
-
 			unsigned int index = modulo(ind(i,j,cf->dim), cf->arr_dim);
-			unsigned int *elem = &lattice_t[index];
-			unsigned int pcount = popcountQbits(*elem, 0, cf->n_neigh);
+			unsigned int *elem = &lattice[index];
 
-			if(pcount > 2)
+			if (*elem >= 1)
 			{
-				int rn = (int)(getRandNum() * 6.0f);
-				*elem = 1 << rn;
-			}
-			else if (pcount > 0 && pcount < 2 && lattice_th[index] > 0.5)// && getRandNum() > 0.7f)
-			{
-				for (int m = 0; m < 2; ++m)
+				unsigned int *neighbours = malloc(cf->n_neigh * sizeof(unsigned int));
+				get_neighbours(neighbours, i, j, cf->dim, cf->arr_dim);
+
+				unsigned int highest = 0;
+				unsigned int highest_index = 0;
+				for (int n = 0; n < cf->n_neigh; ++n)
 				{
-					int rn = (int)(getRandNum() * 6.0f);
-					*elem |= 1 << rn;
+					if (lattice_th[neighbours[n]] > highest && lattice_th[neighbours[n]] < iter - cf->age)
+					{
+						highest = lattice_th[neighbours[n]];
+						highest_index = n;
+					}
 				}
-				lattice_th[index] = 0.0;
-			}
-			else{
-				lattice_th[index] += 0.1;
-				*elem =0;
-			}
 
-			free(neighbours);
+				if (highest > 0)
+					lattice_t[neighbours[highest_index]] = 1;
+				else
+				{
+					unsigned int rn;
+
+					for (int ii = 0; ii < 36; ++ii)
+					{
+						rn = (unsigned int)(getRandNum() * 6.0f);
+						if (lattice_th[neighbours[rn]] < iter - cf->age)
+							break;
+					}
+
+					lattice_t[neighbours[rn]] = 1;
+				}
+
+				lattice_th[index] = iter;
+
+				free(neighbours);
+				ct++;
+			}
 		}
 	}
+	if(ct == 0)
+	{
+		printf("Signal died.\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
-void propagate(unsigned int *lattice, unsigned int *lattice_t, config *cf)
+void propagate_2(unsigned int *lattice, unsigned int *lattice_t, config *cf)
 {
 	for (int i = 0; i < cf->arr_dim; ++i)
-		lattice[i] = rotate(lattice_t[i], cf->n_neigh, cf->n_neigh/2);
-
-	// for (int i = 0; i < 3000000; ++i)
-	// {
-		// double *d = malloc(1000 * sizeof(double));
-		// free(d);
-	// }
-}
-
-unsigned int rotate(unsigned int word, unsigned int length, unsigned int n)
-{
-	for(unsigned int i = 0; i < n; i++)
-	{
-		unsigned int bit = (word >> (length - 1)) & 1;
-		word &= ~(1 << (length - 1));
-		word <<= 1;
-		if(bit) word |= 1;
-		else word &= ~1;
-	}
-	return word;
+		lattice[i] = lattice_t[i];
 }
 
 void write_array(FILE *stream, unsigned int *arr, unsigned int dim)
@@ -164,7 +154,7 @@ void write_pcount(FILE *stream, unsigned int *arr, unsigned int dim)
 	for (unsigned int i = 0; i < dim; ++i)
 	{
 		for (unsigned int j = 0; j < dim; ++j)
-			fprintf(stream, "%d ", popcountQbits(arr[i * dim + j], 0, 6));
+			fprintf(stream, "%d ", arr[i * dim + j]);
 		fprintf(stream, "\n");
 	}
 }
@@ -189,16 +179,6 @@ int modulo(int i, int n)
 	if(i > -1) return i % n;
 	else return(i % n + n);     // Incorrect implementation but faster, works in this case as input values are constrained such that the second % will never be needed.
 //	else return(i % n + n) % n; // Proper implementation of mod function
-}
-
-int popcountQbits(unsigned int x, int start, int end)
-{
-	int count = 0;
-
-	for(int i = start; i < end+1; i++)
-		count += (x >> i) & 1;
-
-	return count;
 }
 
 void initSeed(void)
