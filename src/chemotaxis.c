@@ -31,6 +31,12 @@ int main(void)
 	// config cf = {15, 225, 6, 5000, 20};
 	config cf = {50, 2500, 6, 5000, 50};
 
+	if (cf.arr_dim != cf.dim * cf.dim)
+	{
+		fprintf(stderr, "Incorrect dimensions.\n");
+		return EXIT_FAILURE;
+	}
+
 	unsigned int *lattice    = calloc(cf.arr_dim, sizeof(unsigned int));
 	unsigned int *lattice_t  = calloc(cf.arr_dim, sizeof(unsigned int));
 	unsigned int *lattice_th = calloc(cf.arr_dim, sizeof(unsigned int));
