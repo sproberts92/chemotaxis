@@ -90,7 +90,7 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *l
 				unsigned int highest_index = 0;
 				for (int n = 0; n < cf->n_neigh; ++n)
 				{
-					if (lattice_th[neighbours[n]] > highest && lattice_th[neighbours[n]] < iter - cf->age)
+					if (lattice_th[neighbours[n]] > highest && (int)lattice_th[neighbours[n]] < (int)iter - (int)cf->age)
 					{
 						highest = lattice_th[neighbours[n]];
 						highest_index = n;
@@ -106,7 +106,7 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *l
 					for (int ii = 0; ii < 36; ++ii)
 					{
 						rn = (unsigned int)(getRandNum() * 6.0f);
-						if (lattice_th[neighbours[rn]] < iter - cf->age)
+						if ((int)lattice_th[neighbours[rn]] < (int)iter - (int)cf->age)
 							break;
 					}
 
