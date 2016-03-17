@@ -12,6 +12,7 @@ typedef struct{
 	const int n_neigh;
 	const int iter;
 	const int age;
+	const double noise;
 } config;
 
 int ind(int x, int y, int d);
@@ -28,8 +29,8 @@ int main(void)
 {
 	initSeed();
 
-	// config cf = {15, 225, 6, 5000, 20};
-	config cf = {50, 2500, 6, 5000, 50};
+	// config cf = {15, 225, 6, 5000, 20, 0.00f};
+	config cf = {50, 2500, 6, 5000, 50, 0.01f};
 
 	if (cf.arr_dim != cf.dim * cf.dim)
 	{
@@ -97,7 +98,7 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *l
 					}
 				}
 
-				if (highest > 0)
+				if (highest > 0 && getRandNum() > cf->noise)
 					lattice_t[neighbours[highest_index]] = 1;
 				else
 				{
