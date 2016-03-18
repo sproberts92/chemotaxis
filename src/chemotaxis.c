@@ -30,7 +30,7 @@ int main(void)
 	initSeed();
 
 	// config cf = {15, 225, 6, 5000, 20, 0.00f};
-	config cf = {50, 2500, 6, 5000, 50, 0.01f};
+	config cf = {50, 2500, 6, 5000, 50, 0.00f};
 
 	if (cf.arr_dim != cf.dim * cf.dim)
 	{
@@ -42,7 +42,11 @@ int main(void)
 	unsigned int *lattice_t  = calloc(cf.arr_dim, sizeof(unsigned int));
 	unsigned int *lattice_th = calloc(cf.arr_dim, sizeof(unsigned int));
 
-	lattice[1275] = 1;
+	// lattice[127] = 1;
+	lattice[1295] = 1;
+	lattice[1255] = 1;
+	lattice[775] = 1;
+	lattice[1775] = 1;
 
 	for (int iter = 2; iter < cf.iter + 2; ++iter)
 	{
