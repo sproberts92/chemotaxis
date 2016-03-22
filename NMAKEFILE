@@ -17,14 +17,16 @@ EXTRA_FLAGS = /Ox
 EXTRA_FLAGS = /Wextra /Wpedantic /Qdiag-disable:remark /O3 /arch=SSSE3
 !ENDIF
 
-CFLAGS = /EHsc /Wall $(EXTRA_FLAGS) /c /Fo.\$(OBJECT_DIR)\ 
+CFLAGS = /EHsc /Wall $(EXTRA_FLAGS) /c /Fo.\$(OBJECT_DIR)\ \
+/I ext\tinymt\tinymt
 
 LIBS = 
 DLLS_SRC = 
 
 SOURCES = $(SOURCE_DIR)\$(USER_SOURCES: = src\)
 _OBJECTS = $(OBJECT_DIR)\$(USER_SOURCES: = build\)
-OBJECTS = $(_OBJECTS:.c=.obj)
+OBJECTS = $(_OBJECTS:.c=.obj) \
+ext\tinymt\tinymt\tinymt64.obj
 
 BINARY = $(BINARY_DIR)\$(EXECUTABLE)
 

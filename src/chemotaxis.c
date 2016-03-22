@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "mt19937ar.c"
+#include "tinymt64.h"
+
+tinymt64_t tinymt_gen;
 
 typedef struct{
 	const int dim;
@@ -194,10 +196,10 @@ int modulo(int i, int n)
 
 void initSeed(void)
 {
-	init_genrand((unsigned long)time(NULL));
+    tinymt64_init(&tinymt_gen, (unsigned long)time(NULL));
 }
 
 double getRandNum(void)
 {
-	return genrand();
+	return tinymt64_generate_double(&tinymt_gen);
 }

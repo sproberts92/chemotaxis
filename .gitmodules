@@ -1,0 +1,4 @@
+[submodule "ext/tinymt"]
+	path = ext/tinymt
+	url = https://github.com/MersenneTwister-Lab/TinyMT.git
+	ignore = all
