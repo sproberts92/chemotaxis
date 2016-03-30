@@ -1,4 +1,4 @@
-USER_SOURCES = chemotaxis.c
+USER_SOURCES = *.c
 EXECUTABLE = chemotaxis.exe
 ###################################
 SOURCE_DIR = src
@@ -6,7 +6,7 @@ OBJECT_DIR = build
 BINARY_DIR = bin
 EXTERN_DIR = ext
 ###################################
-CC = cl
+CC = icl
 LINK = link
 
 !IF "$(CC)" == "cl"
