@@ -6,6 +6,8 @@
 
 #include "tinymt64.h"
 
+#define SLOW
+
 tinymt64_t tinymt_gen;
 
 typedef struct{
@@ -26,6 +28,7 @@ void propagate_2(unsigned int *lattice, unsigned int *lattice_t, config *cf);
 double getRandNum(void);
 void initSeed(void);
 void write_last_visited(FILE *stream, unsigned int *arr, unsigned int dim);
+void wait_for_ms(clock_t wait_time);
 
 int main(void)
 {
@@ -57,11 +60,9 @@ int main(void)
 	{
 		// write_array(stdout, lattice_th, cf.dim);
 
-		// for (int i = 0; i < 100000; ++i)
-		// {
-		// 	double *d = malloc(1000 * sizeof(double));
-		// 	free(d);
-		// }
+		#ifdef SLOW
+			wait_for_ms(100);
+		#endif
 
 		propagate_1(lattice, lattice_t, lattice_th, iter, &cf);
 		propagate_2(lattice, lattice_t, &cf);
@@ -249,4 +250,10 @@ void initSeed(void)
 double getRandNum(void)
 {
 	return tinymt64_generate_double(&tinymt_gen);
+}
+
+void wait_for_ms(clock_t wait_time)
+{
+	clock_t ret_time = clock() + wait_time;
+	while (clock() < ret_time);
 }
