@@ -6,7 +6,7 @@
 
 #include "tinymt64.h"
 
-#define SLOW
+// #define SLOW
 
 tinymt64_t tinymt_gen;
 
@@ -16,6 +16,7 @@ typedef struct{
 	const int n_neigh;
 	const int iter;
 	const int age;
+	const int target_activity;
 	const double noise;
 } config;
 
@@ -29,13 +30,13 @@ double getRandNum(void);
 void initSeed(void);
 void write_last_visited(FILE *stream, unsigned int *arr, unsigned int dim);
 void wait_for_ms(clock_t wait_time);
+int choose_site(unsigned int *neighbours, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int iter, config *cf);
 
 int main(void)
 {
 	initSeed();
 
-	// config cf = {15, 225, 6, 5000, 20, 0.00f};
-	config cf = {50, 2500, 6, 5000, 50, 0.00f};
+	config cf = {250, 250*250, 6, 5000, 50, 50, 0.4f};
 
 	if (cf.arr_dim != cf.dim * cf.dim)
 	{
@@ -50,14 +51,12 @@ int main(void)
 	unsigned int *lattice_t  = calloc(cf.arr_dim, sizeof(unsigned int));
 	unsigned int *lattice_th = calloc(cf.arr_dim, sizeof(unsigned int));
 
-	// lattice[127] = 1;
-	lattice[1295] = 1;
-	lattice[1255] = 1;
-	lattice[775] = 1;
-	lattice[1775] = 1;
+	/* Put a signal in the centre of the lattice */
+	lattice[cf.arr_dim/2 - cf.dim/2] = 1;
 
 	for (int iter = 2; iter < cf.iter + 2; ++iter)
 	{
+		printf("\r%d", iter);
 		// write_array(stdout, lattice_th, cf.dim);
 
 		#ifdef SLOW
@@ -131,33 +130,43 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
 				/* If we have been to one of the neighbours before then go there (with
 				 * a bit of noise), otherwise if none of the neighbours have been visited
 				 * randomly select one */
-				if (highest > 0 && getRandNum() > cf->noise)
-					lattice_t[neighbours[highest_index]] = 1;
-				else
+				if (highest > 0)// && getRandNum() > cf->noise)
 				{
-					unsigned int rn;
-
-					/* Choose a random neighbour that hasn't been visited too recently
-					 * i.e., at least cf.age time steps ago. */
-					for (int ii = 0; ii < 36; ++ii)
-					{
-						rn = (unsigned int)(getRandNum() * 6.0f); /* Six neighbours */
-
-						/* Make sure it hasn't been visited too recently */
-						if ((int)lattice_th[neighbours[rn]] < (int)iter - (int)cf->age)
-							break;
-					}
-
-					lattice_t[neighbours[rn]] = 1;
+					lattice_t[neighbours[highest_index]] = 1;
+					ct++;
 				}
+				else
+					ct += choose_site(neighbours, lattice_t, lattice_th, iter, cf);
 
 				/* Update the time last visited in the lattice_th array */
 				lattice_th[index] = iter;
 
 				free(neighbours);
-				ct++;
 			}
 		}
+
+	if(ct < cf->target_activity)
+	{
+		unsigned int *signals = calloc(ct, sizeof(unsigned int));
+
+		unsigned int ap = 0;
+		for (int i = 0; i < cf->arr_dim; ++i)
+			if(lattice_t[i])
+				signals[ap++] = i;
+
+		unsigned int *neighbours = malloc(cf->n_neigh * sizeof(unsigned int));
+		do
+		{
+			unsigned int k = signals[(int)(getRandNum() * ap - 1)];
+			get_neighbours(neighbours, k/cf->dim, k%cf->dim, cf->dim, cf->arr_dim);
+
+			ct += choose_site(neighbours, lattice_t, lattice_th, iter, cf);
+		}
+		while(getRandNum() < 0.85);
+
+		free(neighbours);
+		free(signals);
+	}
 
 	/* Check that the signal is still alive (explained further above) */
 	if(ct == 0)
@@ -167,11 +176,34 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
 	}
 }
 
+int choose_site(unsigned int *neighbours, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int iter, config *cf)
+{
+	unsigned int rn;
+
+	/* Choose a random neighbour that hasn't been visited too recently
+	 * i.e., at least cf.age time steps ago. */
+	for (int ii = 0; ii < 36; ++ii)
+	{
+		rn = (unsigned int)(getRandNum() * (float)cf->n_neigh); /* Six neighbours */
+
+		/* Make sure it hasn't been visited too recently */
+		if ((int)lattice_th[neighbours[rn]] < abs((int)iter - (int)cf->age))
+			break;
+	}
+
+	lattice_t[neighbours[rn]] = 1;
+
+	return 1;
+}
+
 void propagate_2(unsigned int *lattice, unsigned int *lattice_t, config *cf)
 {
 	/* Move the signal form the temporary lattice back to the primary lattice */
 	for (int i = 0; i < cf->arr_dim; ++i)
-		lattice[i] = lattice_t[i];
+		if(getRandNum() > cf->noise)
+			lattice[i] = lattice_t[i];
+		else
+			lattice[i] = 0;
 }
 
 void write_array(FILE *stream, unsigned int *arr, unsigned int dim)
