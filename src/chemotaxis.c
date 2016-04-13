@@ -271,7 +271,7 @@ int modulo(int i, int n)
 	else return(i % n + n);
 
 	/* Proper implementation of mod function */
-//	else return(i % n + n) % n;
+	//	else return(i % n + n) % n;
 }
 
 void initSeed(void)
