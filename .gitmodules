@@ -2,3 +2,7 @@
 	path = ext/tinymt
 	url = https://github.com/MersenneTwister-Lab/TinyMT.git
 	ignore = all
+[submodule "ext/yajl"]
+	path = ext/yajl
+	url = https://github.com/lloyd/yajl.git
+	ignore = all
