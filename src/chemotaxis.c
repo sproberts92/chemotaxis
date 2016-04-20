@@ -6,19 +6,12 @@
 
 #include "tinymt64.h"
 
+#include "config.h"
+
 // #define SLOW
 
 tinymt64_t tinymt_gen;
 
-typedef struct{
-	const int dim;
-	const int arr_dim;
-	const int n_neigh;
-	const int iter;
-	const int age;
-	const int target_activity;
-	const double noise;
-} config;
 
 int ind(int x, int y, int d);
 void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
@@ -34,9 +27,10 @@ int choose_site(unsigned int *neighbours, unsigned int *lattice_t, unsigned int 
 
 int main(void)
 {
-	initSeed();
+	config cf;
+	read_config(&cf);
 
-	config cf = {250, 250*250, 6, 5000, 50, 50, 0.4f};
+	initSeed();
 
 	if (cf.arr_dim != cf.dim * cf.dim)
 	{

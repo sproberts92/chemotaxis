@@ -18,10 +18,11 @@ EXTRA_FLAGS = /Wextra /Wpedantic /Qdiag-disable:remark /O3 /arch=SSSE3
 !ENDIF
 
 CFLAGS = /EHsc /Wall $(EXTRA_FLAGS) /c /Fo.\$(OBJECT_DIR)\ \
-/I ext\tinymt\tinymt
+/I $(EXTERN_DIR)\tinymt\tinymt \
+/I $(EXTERN_DIR)\yajl\build\yajl-2.1.1\include
 
-LIBS = 
-DLLS_SRC = 
+LIBS = $(EXTERN_DIR)\yajl\build\yajl-2.1.1\lib\Release\yajl.lib
+DLLS_SRC = $(EXTERN_DIR)\yajl\build\yajl-2.1.1\lib\Release\yajl.dll
 
 SOURCES = $(SOURCE_DIR)\$(USER_SOURCES: = src\)
 _OBJECTS = $(OBJECT_DIR)\$(USER_SOURCES: = build\)
