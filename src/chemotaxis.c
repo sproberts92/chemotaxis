@@ -25,19 +25,20 @@ int ind(int x, int y, int d);
 void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
 void write_array(FILE *stream, unsigned int *arr, unsigned int dim);
 int modulo(int i, int n);
-void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int *histogram, unsigned int iter, config *cf);
+void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf);
 void propagate_2(unsigned int *lattice, unsigned int *lattice_t, config *cf);
 double getRandNum(void);
 void initSeed(void);
 void write_last_visited(FILE *stream, unsigned int *arr, unsigned int dim);
 void wait_for_ms(clock_t wait_time);
 int choose_site(unsigned int *neighbours, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int iter, config *cf);
+int is_in_arr(unsigned int n, unsigned int *arr, int l);
 
 int main(void)
 {
 	initSeed();
 
-	config cf = {250, 250*250, 6, 50000, 40, 20, 0.01f};
+	config cf = {250, 250*250, 6, 5000, 50, 20, 0.01f};
 
 	if (cf.arr_dim != cf.dim * cf.dim)
 	{
@@ -52,9 +53,15 @@ int main(void)
 	unsigned int *lattice_t  = calloc(cf.arr_dim, sizeof(unsigned int));
 	unsigned int *lattice_th = calloc(cf.arr_dim, sizeof(unsigned int));
 	unsigned int *histogram  = calloc(cf.age * 2, sizeof(unsigned int));
+	unsigned int *branches   = malloc(0.1f * cf.arr_dim * sizeof(unsigned int));
+
+	for (int i = 0; i < 0.1f * cf.arr_dim; ++i)
+		branches[i] =  getRandNum() * cf.arr_dim;
 
 	/* Put a signal in the centre of the lattice */
 	lattice[cf.arr_dim/2 - cf.dim/2] = 1;
+	lattice[cf.arr_dim/2 - cf.dim/2 + 50] = 1;
+	lattice[cf.arr_dim/2 - cf.dim/2 - 50] = 1;
 
 	for (int iter = 2; iter < cf.iter + 2; ++iter)
 	{
@@ -65,7 +72,7 @@ int main(void)
 			wait_for_ms(100);
 		#endif
 
-		propagate_1(lattice, lattice_t, lattice_th, histogram, iter, &cf);
+		propagate_1(lattice, lattice_t, lattice_th, histogram, branches, iter, &cf);
 		propagate_2(lattice, lattice_t, &cf);
 
 		/* Write out the last visited time to unique files, one per
@@ -82,7 +89,7 @@ int main(void)
 		#endif
 	}
 
-	
+
 	FILE *fp = fopen("output/visited_hist.dat", "w");
 	for (int i = 0; i < cf.age*2; ++i)
 		fprintf(fp, "%d\n", histogram[i]);
@@ -95,7 +102,7 @@ int main(void)
 }
 
 void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
-	unsigned int *lattice_th, unsigned int *histogram, unsigned int iter, config *cf)
+	unsigned int *lattice_th, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf)
 {
 	/* Signal is propagated into a tempoarary lattice, lattice_t. If this
 	 * is not done then there can be confusion as the lattice is updated
@@ -152,6 +159,9 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
 				if(lattice_th[index] > 0 && iter - lattice_th[index] < cf->age * 2)
 					histogram[iter - lattice_th[index]]++;
 
+				if((int)is_in_arr(i * cf->dim + j, branches, 0.1f * cf->arr_dim) > 0 && abs(iter - lattice_th[index] - cf->age) < 35)
+					ct += choose_site(neighbours, lattice_t, lattice_th, iter, cf);
+
 				/* Update the time last visited in the lattice_th array */
 				lattice_th[index] = iter;
 
@@ -159,35 +169,21 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
 			}
 		}
 
-	if(ct < cf->target_activity)
-	{
-		unsigned int *signals = calloc(ct, sizeof(unsigned int));
-
-		unsigned int ap = 0;
-		for (int i = 0; i < cf->arr_dim; ++i)
-			if(lattice_t[i])
-				signals[ap++] = i;
-
-		unsigned int *neighbours = malloc(cf->n_neigh * sizeof(unsigned int));
-		do
-		{
-			unsigned int k = signals[(int)(getRandNum() * ap - 1)];
-			get_neighbours(neighbours, k/cf->dim, k%cf->dim, cf->dim, cf->arr_dim);
-
-			ct += choose_site(neighbours, lattice_t, lattice_th, iter, cf);
-		}
-		while(getRandNum() < 0.85);
-
-		free(neighbours);
-		free(signals);
-	}
-
 	/* Check that the signal is still alive (explained further above) */
 	if(ct == 0)
 	{
 		printf("Signal died.\n");
 		exit(EXIT_FAILURE);
 	}
+}
+
+int is_in_arr(unsigned int n, unsigned int *arr, int l)
+{
+	for (int i = 0; i < l; ++i)
+		if(arr[i] == n)
+			return i;
+
+	return 0;
 }
 
 int choose_site(unsigned int *neighbours, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int iter, config *cf)
