@@ -19,7 +19,7 @@ char *read_file(long int *length, const char *file_name)
 		buffer = malloc (sizeof(char) * (string_size + 1));
 		long int read_size = fread(buffer, sizeof(char), string_size, fp);
 
-		buffer[string_size + 1] = '\0';
+		buffer[string_size] = '\0';
 
 		*length = read_size;
 
