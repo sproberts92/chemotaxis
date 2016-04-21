@@ -10,17 +10,24 @@
 
 tinymt64_t tinymt_gen;
 
+/* AoS will hopefully give better cache performance than SoA */
+typedef struct {
+	int v; /* Value */
+	int t; /* Temp */
+	int l; /* Last */
+} latt_site;
+
 int ind(int x, int y, int d);
 void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
-void write_array(FILE *stream, unsigned int *arr, unsigned int dim);
+void write_array(FILE *stream, latt_site *lattice, unsigned int dim);
 int modulo(int i, int n);
-void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf);
-void propagate_2(unsigned int *lattice, unsigned int *lattice_t, config *cf);
+void propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf);
+void propagate_2(latt_site *lattice, config *cf);
 double getRandNum(void);
 void initSeed(void);
-void write_last_visited(FILE *stream, unsigned int *arr, unsigned int dim);
+void write_last_visited(FILE *stream, latt_site *lattice, unsigned int dim);
 void wait_for_ms(clock_t wait_time);
-int choose_site(unsigned int *neighbours, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int iter, config *cf);
+int choose_site(unsigned int *neighbours, latt_site *lattice_t, unsigned int iter, config *cf);
 int is_in_arr(unsigned int n, unsigned int *arr, int l);
 
 int main(void)
@@ -30,12 +37,7 @@ int main(void)
 
 	initSeed();
 
-	/* lattice    - primary lattice
-	 * lattice_t  - temporary propagation lattice
-	 * lattice_th - stores last visited time */
-	unsigned int *lattice    = calloc(cf.arr_dim, sizeof(unsigned int));
-	unsigned int *lattice_t  = calloc(cf.arr_dim, sizeof(unsigned int));
-	unsigned int *lattice_th = calloc(cf.arr_dim, sizeof(unsigned int));
+	latt_site *lattice = calloc(cf.arr_dim, sizeof(latt_site));
 	unsigned int *histogram  = calloc(cf.age * 2, sizeof(unsigned int));
 	unsigned int *branches   = malloc(0.1f * cf.arr_dim * sizeof(unsigned int));
 
@@ -43,20 +45,18 @@ int main(void)
 		branches[i] =  getRandNum() * cf.arr_dim;
 
 	/* Put a signal in the centre of the lattice */
-	lattice[cf.arr_dim/2 - cf.dim/2] = 1;
-	lattice[cf.arr_dim/2 - cf.dim/2 + 50] = 1;
-	lattice[cf.arr_dim/2 - cf.dim/2 - 50] = 1;
+	lattice[cf.arr_dim/2 - cf.dim/2].v = 1;
 
 	for (int iter = 2; iter < cf.iter + 2; ++iter)
 	{
 		printf("\r%d", iter);
-		// write_array(stdout, lattice_th, cf.dim);
+		// write_array(stdout, lattice, cf.dim);
 
 		if(cf.slow > 0)
 			wait_for_ms(cf.slow);
 
-		propagate_1(lattice, lattice_t, lattice_th, histogram, branches, iter, &cf);
-		propagate_2(lattice, lattice_t, &cf);
+		propagate_1(lattice, histogram, branches, iter, &cf);
+		propagate_2(lattice, &cf);
 
 		if(cf.write_frames)
 		{
@@ -67,7 +67,7 @@ int main(void)
 			sprintf(f_name, "output/pcount_%d.dat", iter-2);
 			FILE *fp = fopen(f_name, "w");
 
-			write_last_visited(fp, lattice_th, cf.dim);
+			write_last_visited(fp, lattice, cf.dim);
 			fclose(fp);
 		}
 	}
@@ -78,13 +78,11 @@ int main(void)
 	fclose(fp);
 
 	free(lattice);
-	free(lattice_t);
 
 	return EXIT_SUCCESS;
 }
 
-void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
-	unsigned int *lattice_th, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf)
+void propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf)
 {
 	/* Signal is propagated into a tempoarary lattice, lattice_t. If this
 	 * is not done then there can be confusion as the lattice is updated
@@ -94,7 +92,8 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
 	 * updated itself. */
 
 	/* CLear the temporary lattice_t */
-	memset(lattice_t, 0, cf->arr_dim * sizeof(unsigned int));
+	for (int i = 0; i < cf->arr_dim; ++i)
+		lattice[i].t = 0;
 
  	/* Used as a check to see if the signal is still alive, mainly
  	 * useful in debugging when introducing new propagation logic */
@@ -105,12 +104,11 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
 		{
 			/* Shortcuts */
 			unsigned int index = modulo(ind(i,j,cf->dim), cf->arr_dim);
-			unsigned int *elem = &lattice[index];
 
 			/* Focus on those lattice elements where there is a signal.
 			 * Can probably get a big speed increase by keeping track of where the
 			 * signal is and only touching that element. Oh well this is easier for now */
-			if (*elem >= 1)
+			if (lattice[index].v >= 1)
 			{
 				/* Build a vector containing indices of the surrounding elements */
 				unsigned int *neighbours = malloc(cf->n_neigh * sizeof(unsigned int));
@@ -121,9 +119,9 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
 				unsigned int highest = 0;
 				unsigned int highest_index = 0;
 				for (int n = 0; n < cf->n_neigh; ++n)
-					if (lattice_th[neighbours[n]] > highest && (int)lattice_th[neighbours[n]] < (int)iter - (int)cf->age)
+					if (lattice[neighbours[n]].l > highest && (int)lattice[neighbours[n]].l < (int)iter - (int)cf->age)
 					{
-						highest = lattice_th[neighbours[n]];
+						highest = lattice[neighbours[n]].l;
 						highest_index = n;
 					}
 
@@ -132,20 +130,20 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
 				 * randomly select one */
 				if (highest > 0)// && getRandNum() > cf->noise)
 				{
-					lattice_t[neighbours[highest_index]] = 1;
+					lattice[neighbours[highest_index]].t = 1;
 					ct++;
 				}
 				else
-					ct += choose_site(neighbours, lattice_t, lattice_th, iter, cf);
+					ct += choose_site(neighbours, lattice, iter, cf);
 
-				if(lattice_th[index] > 0 && iter - lattice_th[index] < cf->age * 2)
-					histogram[iter - lattice_th[index]]++;
+				if(lattice[index].l > 0 && iter - lattice[index].l < cf->age * 2)
+					histogram[iter - lattice[index].l]++;
 
-				if((int)is_in_arr(i * cf->dim + j, branches, 0.1f * cf->arr_dim) > 0 && abs(iter - lattice_th[index] - cf->age) < 35)
-					ct += choose_site(neighbours, lattice_t, lattice_th, iter, cf);
+				if((int)is_in_arr(i * cf->dim + j, branches, 0.1f * cf->arr_dim) > 0 && abs(iter - lattice[index].l - cf->age) < 35)
+					ct += choose_site(neighbours, lattice, iter, cf);
 
 				/* Update the time last visited in the lattice_th array */
-				lattice_th[index] = iter;
+				lattice[index].l = iter;
 
 				free(neighbours);
 			}
@@ -168,7 +166,7 @@ int is_in_arr(unsigned int n, unsigned int *arr, int l)
 	return 0;
 }
 
-int choose_site(unsigned int *neighbours, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int iter, config *cf)
+int choose_site(unsigned int *neighbours, latt_site *lattice, unsigned int iter, config *cf)
 {
 	unsigned int rn;
 
@@ -179,26 +177,26 @@ int choose_site(unsigned int *neighbours, unsigned int *lattice_t, unsigned int 
 		rn = (unsigned int)(getRandNum() * (float)cf->n_neigh); /* Six neighbours */
 
 		/* Make sure it hasn't been visited too recently */
-		if ((int)lattice_th[neighbours[rn]] < abs((int)iter - (int)cf->age))
+		if ((int)lattice[neighbours[rn]].l < abs((int)iter - (int)cf->age))
 			break;
 	}
 
-	lattice_t[neighbours[rn]] = 1;
+	lattice[neighbours[rn]].t = 1;
 
 	return 1;
 }
 
-void propagate_2(unsigned int *lattice, unsigned int *lattice_t, config *cf)
+void propagate_2(latt_site *lattice, config *cf)
 {
 	/* Move the signal form the temporary lattice back to the primary lattice */
 	for (int i = 0; i < cf->arr_dim; ++i)
 		if(getRandNum() > cf->noise)
-			lattice[i] = lattice_t[i];
+			lattice[i].v = lattice[i].t;
 		else
-			lattice[i] = 0;
+			lattice[i].v = 0;
 }
 
-void write_array(FILE *stream, unsigned int *arr, unsigned int dim)
+void write_array(FILE *stream, latt_site *lattice, unsigned int dim)
 {
 	system("cls");
 	for (unsigned int i = 0; i < dim; ++i)
@@ -208,10 +206,10 @@ void write_array(FILE *stream, unsigned int *arr, unsigned int dim)
 		for (unsigned int j = 0; j < dim; ++j)
 		{
 			int index = i + dim * ((j + i/2) % dim);
-			if (arr[index] == 0)
+			if (lattice[index].l == 0)
 				fprintf(stream, "    ");
 			else
-				fprintf(stream, "%3d ", arr[index]);
+				fprintf(stream, "%3d ", lattice[index].l);
 		}
 
 		fprintf(stream, "\n\n");
@@ -220,12 +218,12 @@ void write_array(FILE *stream, unsigned int *arr, unsigned int dim)
 	fprintf(stream, "\n");
 }
 
-void write_last_visited(FILE *stream, unsigned int *arr, unsigned int dim)
+void write_last_visited(FILE *stream, latt_site *lattice, unsigned int dim)
 {
 	for (unsigned int i = 0; i < dim; ++i)
 	{
 		for (unsigned int j = 0; j < dim; ++j)
-			fprintf(stream, "%d ", arr[i * dim + j]);
+			fprintf(stream, "%d ", lattice[i * dim + j].l);
 		fprintf(stream, "\n");
 	}
 }
