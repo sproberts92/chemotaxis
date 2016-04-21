@@ -7,6 +7,7 @@
 #include "tinymt64.h"
 
 // #define SLOW
+// #define WRITE_FRAMES
 
 tinymt64_t tinymt_gen;
 
@@ -24,7 +25,7 @@ int ind(int x, int y, int d);
 void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
 void write_array(FILE *stream, unsigned int *arr, unsigned int dim);
 int modulo(int i, int n);
-void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int iter, config *cf);
+void propagate_1(unsigned int *lattice, unsigned int *lattice_t, unsigned int *lattice_th, unsigned int *histogram, unsigned int iter, config *cf);
 void propagate_2(unsigned int *lattice, unsigned int *lattice_t, config *cf);
 double getRandNum(void);
 void initSeed(void);
@@ -36,7 +37,7 @@ int main(void)
 {
 	initSeed();
 
-	config cf = {250, 250*250, 6, 5000, 50, 50, 0.4f};
+	config cf = {250, 250*250, 6, 50000, 40, 20, 0.01f};
 
 	if (cf.arr_dim != cf.dim * cf.dim)
 	{
@@ -50,6 +51,7 @@ int main(void)
 	unsigned int *lattice    = calloc(cf.arr_dim, sizeof(unsigned int));
 	unsigned int *lattice_t  = calloc(cf.arr_dim, sizeof(unsigned int));
 	unsigned int *lattice_th = calloc(cf.arr_dim, sizeof(unsigned int));
+	unsigned int *histogram  = calloc(cf.age * 2, sizeof(unsigned int));
 
 	/* Put a signal in the centre of the lattice */
 	lattice[cf.arr_dim/2 - cf.dim/2] = 1;
@@ -63,19 +65,28 @@ int main(void)
 			wait_for_ms(100);
 		#endif
 
-		propagate_1(lattice, lattice_t, lattice_th, iter, &cf);
+		propagate_1(lattice, lattice_t, lattice_th, histogram, iter, &cf);
 		propagate_2(lattice, lattice_t, &cf);
 
 		/* Write out the last visited time to unique files, one per
 		 * time step. Careful! Can produce a lot of output if left
 		 * running for too long! */
-		char f_name[64];
-		sprintf(f_name, "output/pcount_%d.dat", iter-2);
-		FILE *fp = fopen(f_name, "w");
 
-		write_last_visited(fp, lattice_th, cf.dim);
-		fclose(fp);
+		#ifdef WRITE_FRAMES
+			char f_name[64];
+			sprintf(f_name, "output/pcount_%d.dat", iter-2);
+			FILE *fp = fopen(f_name, "w");
+
+			write_last_visited(fp, lattice_th, cf.dim);
+			fclose(fp);
+		#endif
 	}
+
+	
+	FILE *fp = fopen("output/visited_hist.dat", "w");
+	for (int i = 0; i < cf.age*2; ++i)
+		fprintf(fp, "%d\n", histogram[i]);
+	fclose(fp);
 
 	free(lattice);
 	free(lattice_t);
@@ -84,7 +95,7 @@ int main(void)
 }
 
 void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
-	unsigned int *lattice_th, unsigned int iter, config *cf)
+	unsigned int *lattice_th, unsigned int *histogram, unsigned int iter, config *cf)
 {
 	/* Signal is propagated into a tempoarary lattice, lattice_t. If this
 	 * is not done then there can be confusion as the lattice is updated
@@ -137,6 +148,9 @@ void propagate_1(unsigned int *lattice, unsigned int *lattice_t,
 				}
 				else
 					ct += choose_site(neighbours, lattice_t, lattice_th, iter, cf);
+
+				if(lattice_th[index] > 0 && iter - lattice_th[index] < cf->age * 2)
+					histogram[iter - lattice_th[index]]++;
 
 				/* Update the time last visited in the lattice_th array */
 				lattice_th[index] = iter;
