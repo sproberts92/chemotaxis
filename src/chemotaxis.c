@@ -19,7 +19,7 @@ int ind(int x, int y, int d);
 void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
 void write_array(FILE *stream, latt_site *lattice, unsigned int dim);
 int modulo(int i, int n);
-void propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf);
+int propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf);
 void propagate_2(latt_site *lattice, config *cf);
 double getRandNum(void);
 void initSeed(void);
@@ -37,6 +37,8 @@ int main(void)
 
 	initSeed();
 
+	clock_t start = clock();
+
 	latt_site *lattice = calloc(cf.arr_dim, sizeof(latt_site));
 	unsigned int *histogram  = calloc_s(cf.age * 2, sizeof(unsigned int));
 	unsigned int *branches   = malloc_s(0.1f * cf.arr_dim * sizeof(unsigned int));
@@ -47,15 +49,20 @@ int main(void)
 	/* Put a signal in the centre of the lattice */
 	lattice[cf.arr_dim/2 - cf.dim/2].v = 1;
 
+	printf("  0%%");
+
 	for (int iter = 2; iter < cf.iter + 2; ++iter)
 	{
-		printf("\r%d", iter);
+		if(iter % (cf.iter / 100) == 0) printf("\r%3d%%", 100 * iter / cf.iter);
 		// write_array(stdout, lattice, cf.dim);
 
 		if(cf.slow > 0)
 			wait_for_ms(cf.slow);
 
-		propagate_1(lattice, histogram, branches, iter, &cf);
+		if(!propagate_1(lattice, histogram, branches, iter, &cf))
+			/* Signal has died */
+			break;
+
 		propagate_2(lattice, &cf);
 
 		if(cf.write_frames)
@@ -72,6 +79,8 @@ int main(void)
 		}
 	}
 
+	printf("\n\nSimulation run time: %.2lfs\n", (clock() - start)/1000.0f);
+
 	FILE *fp = fopen("output/visited_hist.dat", "w");
 	for (int i = 0; i < cf.age*2; ++i)
 		fprintf(fp, "%d\n", histogram[i]);
@@ -82,7 +91,7 @@ int main(void)
 	return EXIT_SUCCESS;
 }
 
-void propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf)
+int propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf)
 {
 	/* Signal is propagated into a tempoarary lattice, lattice_t. If this
 	 * is not done then there can be confusion as the lattice is updated
@@ -152,9 +161,11 @@ void propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *bran
 	/* Check that the signal is still alive (explained further above) */
 	if(ct == 0)
 	{
-		printf("Signal died.\n");
-		exit(EXIT_FAILURE);
+		printf("\n\nSignal died.\n");
+		return 0;
 	}
+	else
+		return 1;
 }
 
 int is_in_arr(unsigned int n, unsigned int *arr, int l)
