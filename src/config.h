@@ -13,7 +13,7 @@ typedef struct{
 	int n_neigh;
 	int iter;
 	int age;
-	int target_activity;
+	int branch_window;
 	double noise;
 
 	int slow;

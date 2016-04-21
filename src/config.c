@@ -55,7 +55,7 @@ int read_config(config *cf)
 	cf->n_neigh         = get_json_int(&node, "n_neigh");
 	cf->iter            = get_json_int(&node, "iter");
 	cf->age             = get_json_int(&node, "age");
-	cf->target_activity = get_json_int(&node, "target_activity");
+	cf->branch_window   = get_json_int(&node, "branch_window");
 	cf->noise           = get_json_double(&node, "noise");
 
 	cf->slow            = get_json_int(&node, "slow");

@@ -3,7 +3,7 @@
 	"n_neigh" : 6,			// Lattice coordination
 	"iter" : 10000,			// Simulation iterations
 	"age" : 50,				// Target signal age to form loop
-	"target_activity" : 50,	// Deprecated
+	"branch_window" : 35,	// Time window for allowing branching
 	"noise" : 0.01,			// Noise factor for update success
 	"slow" : 0,				// Number of ms delay per frame
 	"write_frames" : 0		// Write last visited data to file

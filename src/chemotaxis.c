@@ -161,7 +161,7 @@ int propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branc
 					histogram[iter - lattice[index].l]++;
 
 				/* If we are at a branch site and the last visited time is in the appropriate window, then branch */
-				if(is_in_arr(i * cf->dim + j, branches, 0.1f * cf->arr_dim) > 0 && abs(iter - lattice[index].l - cf->age) < 35)
+				if(is_in_arr(i * cf->dim + j, branches, 0.1f * cf->arr_dim) > 0 && abs(iter - lattice[index].l - cf->age) < cf->branch_window)
 					ct += choose_site(neighbours, lattice, iter, cf);
 
 				/* Update the time last visited */
