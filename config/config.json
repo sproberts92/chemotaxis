@@ -4,5 +4,7 @@
 	"iter" : 5000,
 	"age" : 50,
 	"target_activity" : 50,
-	"noise" : 0.4
+	"noise" : 0.4,
+	"slow" : 0,
+	"write_frames" : 0
 }

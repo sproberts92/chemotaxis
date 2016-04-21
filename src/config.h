@@ -15,6 +15,9 @@ typedef struct{
 	int age;
 	int target_activity;
 	double noise;
+
+	int slow;
+	int write_frames;
 } config;
 
 int check_parse_error(yajl_val node, char *errbuf, int v);

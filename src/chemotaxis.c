@@ -8,9 +8,6 @@
 
 #include "config.h"
 
-// #define SLOW
-// #define WRITE_FRAMES
-
 tinymt64_t tinymt_gen;
 
 
@@ -62,9 +59,8 @@ int main(void)
 		printf("\r%d", iter);
 		// write_array(stdout, lattice_th, cf.dim);
 
-		#ifdef SLOW
-			wait_for_ms(100);
-		#endif
+		if(cf.slow > 0)
+			wait_for_ms(cf.slow);
 
 		propagate_1(lattice, lattice_t, lattice_th, histogram, branches, iter, &cf);
 		propagate_2(lattice, lattice_t, &cf);
@@ -73,14 +69,15 @@ int main(void)
 		 * time step. Careful! Can produce a lot of output if left
 		 * running for too long! */
 
-		#ifdef WRITE_FRAMES
+		if(cf.write_frames)
+		{
 			char f_name[64];
 			sprintf(f_name, "output/pcount_%d.dat", iter-2);
 			FILE *fp = fopen(f_name, "w");
 
 			write_last_visited(fp, lattice_th, cf.dim);
 			fclose(fp);
-		#endif
+		}
 	}
 
 

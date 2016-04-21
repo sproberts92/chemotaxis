@@ -58,6 +58,9 @@ int read_config(config *cf)
 	cf->target_activity = get_json_int(&node, "target_activity");
 	cf->noise           = get_json_double(&node, "noise");
 
+	cf->slow            = get_json_int(&node, "slow");
+	cf->write_frames    = get_json_int(&node, "write_frames");
+
 	yajl_tree_free(node);
 
 	free(file_data);
