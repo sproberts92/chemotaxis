@@ -6,6 +6,8 @@
 
 #include "config.h"
 
+/* Don't really want to make this global but its very messy otherwise. 
+ * I think in mt19937ar you had no choice anyway. */
 tinymt64_t tinymt_gen;
 
 /* AoS will hopefully give better cache performance than SoA */
@@ -15,20 +17,25 @@ typedef struct {
 	int l; /* Last */
 } latt_site;
 
-int ind(int x, int y, int d);
-void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
-void write_array(FILE *stream, latt_site *lattice, unsigned int dim);
-int modulo(int i, int n);
+int choose_site(unsigned int *neighbours, latt_site *lattice_t, unsigned int iter, config *cf);
 int propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branches, unsigned int iter, config *cf);
 void propagate_2(latt_site *lattice, config *cf);
-double getRandNum(void);
-void initSeed(void);
-void write_last_visited(FILE *stream, latt_site *lattice, unsigned int dim);
-void wait_for_ms(clock_t wait_time);
-int choose_site(unsigned int *neighbours, latt_site *lattice_t, unsigned int iter, config *cf);
+void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
+
 int is_in_arr(unsigned int n, unsigned int *arr, int l);
+int modulo(int i, int n);
+int ind(int x, int y, int d);
+
+void initSeed(void);
+double getRandNum(void);
+
+void write_array(FILE *stream, latt_site *lattice, unsigned int dim);
+void write_last_visited(FILE *stream, latt_site *lattice, unsigned int dim);
+
 void *malloc_s(size_t size);
 void *calloc_s(size_t num, size_t size);
+
+void wait_for_ms(clock_t wait_time);
 
 int main(void)
 {
@@ -40,9 +47,14 @@ int main(void)
 	clock_t start = clock();
 
 	latt_site *lattice = calloc(cf.arr_dim, sizeof(latt_site));
+
+	/* Distribution time since last visit */
 	unsigned int *histogram  = calloc_s(cf.age * 2, sizeof(unsigned int));
+
+	/* Points at which branching is allowed */
 	unsigned int *branches   = malloc_s(0.1f * cf.arr_dim * sizeof(unsigned int));
 
+	/* Randomly choose branching points */
 	for (int i = 0; i < 0.1f * cf.arr_dim; ++i)
 		branches[i] =  getRandNum() * cf.arr_dim;
 
@@ -54,7 +66,6 @@ int main(void)
 	for (int iter = 2; iter < cf.iter + 2; ++iter)
 	{
 		if(iter % (cf.iter / 100) == 0) printf("\r%3d%%", 100 * iter / cf.iter);
-		// write_array(stdout, lattice, cf.dim);
 
 		if(cf.slow > 0)
 			wait_for_ms(cf.slow);
@@ -145,10 +156,12 @@ int propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branc
 				else
 					ct += choose_site(neighbours, lattice, iter, cf);
 
+				/* Store time since last visit in histogram */
 				if(lattice[index].l > 0 && iter - lattice[index].l < cf->age * 2)
 					histogram[iter - lattice[index].l]++;
 
-				if((int)is_in_arr(i * cf->dim + j, branches, 0.1f * cf->arr_dim) > 0 && abs(iter - lattice[index].l - cf->age) < 35)
+				/* If we are at a branch site and the last visited time is in the appropriate window, then branch */
+				if(is_in_arr(i * cf->dim + j, branches, 0.1f * cf->arr_dim) > 0 && abs(iter - lattice[index].l - cf->age) < 35)
 					ct += choose_site(neighbours, lattice, iter, cf);
 
 				/* Update the time last visited */
@@ -170,6 +183,7 @@ int propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branc
 
 int is_in_arr(unsigned int n, unsigned int *arr, int l)
 {
+	/* Check whether n is in the array arr of length l */
 	for (int i = 0; i < l; ++i)
 		if(arr[i] == n)
 			return i;
@@ -209,6 +223,11 @@ void propagate_2(latt_site *lattice, config *cf)
 
 void write_array(FILE *stream, latt_site *lattice, unsigned int dim)
 {
+	/* As the lattice is hexagonal a bit of extra work goes into making
+	 * the cells line up as they should. The entire array is skewed to 
+	 * give hexagonal alignment and wrapped to bring it back to a square
+	 * on screen. */
+	 
 	system("cls");
 	for (unsigned int i = 0; i < dim; ++i)
 	{
