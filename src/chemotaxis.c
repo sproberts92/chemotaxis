@@ -1,5 +1,3 @@
-#pragma warning( disable : 4710 4711 4820 4996 )
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -29,6 +27,8 @@ void write_last_visited(FILE *stream, latt_site *lattice, unsigned int dim);
 void wait_for_ms(clock_t wait_time);
 int choose_site(unsigned int *neighbours, latt_site *lattice_t, unsigned int iter, config *cf);
 int is_in_arr(unsigned int n, unsigned int *arr, int l);
+void *malloc_s(size_t size);
+void *calloc_s(size_t num, size_t size);
 
 int main(void)
 {
@@ -38,8 +38,8 @@ int main(void)
 	initSeed();
 
 	latt_site *lattice = calloc(cf.arr_dim, sizeof(latt_site));
-	unsigned int *histogram  = calloc(cf.age * 2, sizeof(unsigned int));
-	unsigned int *branches   = malloc(0.1f * cf.arr_dim * sizeof(unsigned int));
+	unsigned int *histogram  = calloc_s(cf.age * 2, sizeof(unsigned int));
+	unsigned int *branches   = malloc_s(0.1f * cf.arr_dim * sizeof(unsigned int));
 
 	for (int i = 0; i < 0.1f * cf.arr_dim; ++i)
 		branches[i] =  getRandNum() * cf.arr_dim;
@@ -91,7 +91,7 @@ void propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *bran
 	 * per time step if it is propagated into a cell that has not yet been
 	 * updated itself. */
 
-	/* CLear the temporary lattice_t */
+	/* CLear the temporary lattice.t */
 	for (int i = 0; i < cf->arr_dim; ++i)
 		lattice[i].t = 0;
 
@@ -111,7 +111,7 @@ void propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *bran
 			if (lattice[index].v >= 1)
 			{
 				/* Build a vector containing indices of the surrounding elements */
-				unsigned int *neighbours = malloc(cf->n_neigh * sizeof(unsigned int));
+				unsigned int *neighbours = malloc_s(cf->n_neigh * sizeof(unsigned int));
 				get_neighbours(neighbours, i, j, cf->dim, cf->arr_dim);
 
 				/* Search the surrounding elements to see which was visited the most recently,
@@ -142,7 +142,7 @@ void propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *bran
 				if((int)is_in_arr(i * cf->dim + j, branches, 0.1f * cf->arr_dim) > 0 && abs(iter - lattice[index].l - cf->age) < 35)
 					ct += choose_site(neighbours, lattice, iter, cf);
 
-				/* Update the time last visited in the lattice_th array */
+				/* Update the time last visited */
 				lattice[index].l = iter;
 
 				free(neighbours);
@@ -278,4 +278,32 @@ void wait_for_ms(clock_t wait_time)
 {
 	clock_t ret_time = clock() + wait_time;
 	while (clock() < ret_time);
+}
+
+void *malloc_s(size_t size)
+{
+	void *block = NULL;
+	block = malloc(size);
+
+	if(block == NULL)
+	{
+		fprintf(stderr, "Failed to allocate memory.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return block;
+}
+
+void *calloc_s(size_t num, size_t size)
+{
+	void *block = NULL;
+	block = calloc(num, size);
+
+	if(block == NULL)
+	{
+		fprintf(stderr, "Failed to allocate memory.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return block;
 }
