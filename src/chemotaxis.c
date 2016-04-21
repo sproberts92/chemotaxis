@@ -10,7 +10,6 @@
 
 tinymt64_t tinymt_gen;
 
-
 int ind(int x, int y, int d);
 void get_neighbours(unsigned int *nb, int x, int y, int d, int td);
 void write_array(FILE *stream, unsigned int *arr, unsigned int dim);
@@ -30,12 +29,6 @@ int main(void)
 	read_config(&cf);
 
 	initSeed();
-
-	if (cf.arr_dim != cf.dim * cf.dim)
-	{
-		fprintf(stderr, "Incorrect dimensions.\n");
-		return EXIT_FAILURE;
-	}
 
 	/* lattice    - primary lattice
 	 * lattice_t  - temporary propagation lattice
@@ -65,12 +58,11 @@ int main(void)
 		propagate_1(lattice, lattice_t, lattice_th, histogram, branches, iter, &cf);
 		propagate_2(lattice, lattice_t, &cf);
 
-		/* Write out the last visited time to unique files, one per
-		 * time step. Careful! Can produce a lot of output if left
-		 * running for too long! */
-
 		if(cf.write_frames)
 		{
+			/* Write out the last visited time to unique files, one per
+			 * time step. Careful! Can produce a lot of output if left
+			 * running for too long! */
 			char f_name[64];
 			sprintf(f_name, "output/pcount_%d.dat", iter-2);
 			FILE *fp = fopen(f_name, "w");
@@ -79,7 +71,6 @@ int main(void)
 			fclose(fp);
 		}
 	}
-
 
 	FILE *fp = fopen("output/visited_hist.dat", "w");
 	for (int i = 0; i < cf.age*2; ++i)
