@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <time.h>
 
 #include "tinymt64.h"
@@ -15,6 +16,7 @@ typedef struct {
 	int v; /* Value */
 	int t; /* Temp */
 	int l; /* Last */
+	int c; /* Count total visits */
 } latt_site;
 
 int choose_site(unsigned int *neighbours, latt_site *lattice_t, unsigned int iter, config *cf);
@@ -29,8 +31,8 @@ int ind(int x, int y, int d);
 void initSeed(void);
 double getRandNum(void);
 
-void write_array(FILE *stream, latt_site *lattice, unsigned int dim);
-void write_last_visited(FILE *stream, latt_site *lattice, unsigned int dim);
+void write_array(FILE *stream, latt_site *lattice, int offset, unsigned int dim);
+void write_last_visited(FILE *stream, latt_site *lattice, int offset, unsigned int dim);
 
 void *malloc_s(size_t size);
 void *calloc_s(size_t num, size_t size);
@@ -85,14 +87,18 @@ int main(void)
 			sprintf(f_name, "output/pcount_%d.dat", iter-2);
 			FILE *fp = fopen(f_name, "w");
 
-			write_last_visited(fp, lattice, cf.dim);
+			write_last_visited(fp, lattice, offsetof(latt_site, l), cf.dim);
 			fclose(fp);
 		}
 	}
 
+	FILE *fp = fopen("output/total_visits.dat", "w");
+	write_last_visited(fp, lattice, offsetof(latt_site, c), cf.dim);
+	fclose(fp);
+
 	printf("\n\nSimulation run time: %.2lfs\n", (clock() - start)/1000.0f);
 
-	FILE *fp = fopen("output/visited_hist.dat", "w");
+	fp = fopen("output/visited_hist.dat", "w");
 	for (int i = 0; i < cf.age*2; ++i)
 		fprintf(fp, "%d\n", histogram[i]);
 	fclose(fp);
@@ -221,7 +227,7 @@ void propagate_2(latt_site *lattice, config *cf)
 			lattice[i].v = 0;
 }
 
-void write_array(FILE *stream, latt_site *lattice, unsigned int dim)
+void write_array(FILE *stream, latt_site *lattice, int offset, unsigned int dim)
 {
 	/* As the lattice is hexagonal a bit of extra work goes into making
 	 * the cells line up as they should. The entire array is skewed to 
@@ -239,7 +245,10 @@ void write_array(FILE *stream, latt_site *lattice, unsigned int dim)
 			if (lattice[index].l == 0)
 				fprintf(stream, "    ");
 			else
-				fprintf(stream, "%3d ", lattice[index].l);
+			{
+				char* latt_elem = (char*)&lattice[index];
+				fprintf(stream, "%3d ", *(int *)(latt_elem + offset));
+			}
 		}
 
 		fprintf(stream, "\n\n");
@@ -248,12 +257,15 @@ void write_array(FILE *stream, latt_site *lattice, unsigned int dim)
 	fprintf(stream, "\n");
 }
 
-void write_last_visited(FILE *stream, latt_site *lattice, unsigned int dim)
+void write_last_visited(FILE *stream, latt_site *lattice, int offset, unsigned int dim)
 {
 	for (unsigned int i = 0; i < dim; ++i)
 	{
 		for (unsigned int j = 0; j < dim; ++j)
-			fprintf(stream, "%d ", lattice[i * dim + j].l);
+		{
+			char* latt_elem = (char*)&lattice[i * dim + j];
+			fprintf(stream, "%d ", *(int *)(latt_elem + offset));
+		}
 		fprintf(stream, "\n");
 	}
 }
