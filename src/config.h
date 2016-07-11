@@ -13,8 +13,10 @@ typedef struct{
 	int n_neigh;
 	int iter;
 	int age;
+	int total_act_target;
 	int branch_window;
-	double noise;
+	double select_noise;
+	double propagate_noise;
 
 	int slow;
 	int write_frames;

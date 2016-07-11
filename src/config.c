@@ -56,7 +56,9 @@ int read_config(config *cf)
 	cf->iter            = get_json_int(&node, "iter");
 	cf->age             = get_json_int(&node, "age");
 	cf->branch_window   = get_json_int(&node, "branch_window");
-	cf->noise           = get_json_double(&node, "noise");
+	cf->propagate_noise = get_json_double(&node, "propagate_noise");
+	cf->select_noise    = get_json_double(&node, "select_noise");
+	cf->total_act_target    = get_json_double(&node, "total_act_target");
 
 	cf->slow            = get_json_int(&node, "slow");
 	cf->write_frames    = get_json_int(&node, "write_frames");

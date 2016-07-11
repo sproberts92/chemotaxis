@@ -144,8 +144,9 @@ int propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branc
 				 * but not too recently (more than cf.age time steps ago) */
 				unsigned int highest = 0;
 				unsigned int highest_index = 0;
+
 				for (int n = 0; n < cf->n_neigh; ++n)
-					if (lattice[neighbours[n]].l > highest && (int)lattice[neighbours[n]].l < (int)iter - (int)cf->age)
+					if (lattice[neighbours[n]].l > highest && lattice[neighbours[n]].l < (int)iter - cf->age)
 					{
 						highest = lattice[neighbours[n]].l;
 						highest_index = n;
@@ -154,7 +155,7 @@ int propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branc
 				/* If we have been to one of the neighbours before then go there (with
 				 * a bit of noise), otherwise if none of the neighbours have been visited
 				 * randomly select one */
-				if (highest > 0)// && getRandNum() > cf->noise)
+				if (highest > 0 && getRandNum() > cf->select_noise)
 				{
 					lattice[neighbours[highest_index]].t = 1;
 					ct++;
@@ -168,6 +169,10 @@ int propagate_1(latt_site *lattice, unsigned int *histogram, unsigned int *branc
 
 				/* If we are at a branch site and the last visited time is in the appropriate window, then branch */
 				if(is_in_arr(i * cf->dim + j, branches, 0.1f * cf->arr_dim) > 0 && abs(iter - lattice[index].l - cf->age) < cf->branch_window)
+					ct += choose_site(neighbours, lattice, iter, cf);
+
+				/* Total activity level, can be disabled in config.json */
+				if (ct < cf->total_act_target)
 					ct += choose_site(neighbours, lattice, iter, cf);
 
 				/* Update the time last visited */
@@ -208,7 +213,7 @@ int choose_site(unsigned int *neighbours, latt_site *lattice, unsigned int iter,
 		rn = (unsigned int)(getRandNum() * (float)cf->n_neigh); /* Six neighbours */
 
 		/* Make sure it hasn't been visited too recently */
-		if ((int)lattice[neighbours[rn]].l < abs((int)iter - (int)cf->age))
+		if (lattice[neighbours[rn]].l < abs((int)iter - cf->age))
 			break;
 	}
 
@@ -221,8 +226,12 @@ void propagate_2(latt_site *lattice, config *cf)
 {
 	/* Move the signal form the temporary lattice back to the primary lattice */
 	for (int i = 0; i < cf->arr_dim; ++i)
-		if(getRandNum() > cf->noise)
+		if(getRandNum() > cf->propagate_noise)
+		{
 			lattice[i].v = lattice[i].t;
+			if(lattice[i].v)
+				lattice[i].c++;
+		}
 		else
 			lattice[i].v = 0;
 }
